@@ -1,0 +1,14 @@
+git
+pipeline
+workflow-aggregator
+docker-plugin
+docker-workflow
+blueocean
+credentials-binding
+ssh-agent
+email-ext
+github
+gitlab-plugin
+matrix-auth
+job-dsl
+configuration-as-code

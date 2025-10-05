@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - "9000:9000"   # Web UI
+      - "9443:9443"   # HTTPS access
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # Access to Docker engine
+      - portainer_data:/data
+    environment:
+      - TZ=Asia/Kolkata
+
+volumes:
+  portainer_data:
