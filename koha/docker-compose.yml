@@ -1,0 +1,69 @@
+version: "3.9"
+
+services:
+  db:
+    image: mariadb:11
+    container_name: koha-db
+    environment:
+      MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD}"
+      MARIADB_DATABASE: "${KOHA_DB_NAME}"
+      MARIADB_USER: "${KOHA_DB_USER}"
+      MARIADB_PASSWORD: "${KOHA_DB_PASS}"
+    volumes:
+      - koha_db_data:/var/lib/mysql
+    networks:
+      - koha-net
+
+  memcached:
+    image: memcached:latest
+    container_name: koha-memcached
+    networks:
+      - koha-net
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: koha-rabbitmq
+    # Enable STOMP plugin if required by Koha version
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASS}"
+    volumes:
+      - koha_rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - koha-net
+
+  koha:
+    image: teogramm/koha:latest
+    container_name: koha-app
+    depends_on:
+      - db
+      - memcached
+      - rabbitmq
+    ports:
+      - "8080:8080"   # OPAC/public front end
+      - "8081:8081"   # Staff interface/admin
+    environment:
+      MYSQL_SERVER: db
+      MYSQL_USER: ${KOHA_DB_USER}
+      MYSQL_PASSWORD: ${KOHA_DB_PASS}
+      DB_NAME: ${KOHA_DB_NAME}
+      MEMCACHED_SERVERS: memcached:11211
+      MB_HOST: rabbitmq
+      KOHA_LANGS: en
+      ZEBRA_MARC_FORMAT: marc21
+      # You may enable Elasticsearch instead of Zebra if needed
+      # USE_ELASTICSEARCH: "true"
+      # ELASTICSEARCH_HOST: "elasticsearch:9200"
+    volumes:
+      - koha_data:/var/lib/koha
+    networks:
+      - koha-net
+
+volumes:
+  koha_db_data:
+  koha_rabbitmq_data:
+  koha_data:
+
+networks:
+  koha-net:
+    driver: bridge
