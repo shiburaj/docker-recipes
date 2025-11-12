@@ -40,8 +40,8 @@ services:
       - memcached
       - rabbitmq
     ports:
-      - "8080:8080"   # OPAC/public front end
-      - "8081:8081"   # Staff interface/admin
+      - "8098:8080"   # OPAC/public front end
+      - "8099:8081"   # Staff interface/admin
     environment:
       MYSQL_SERVER: db
       MYSQL_USER: ${KOHA_DB_USER}
