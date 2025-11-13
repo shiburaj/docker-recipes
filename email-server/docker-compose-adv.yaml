@@ -1,0 +1,172 @@
+version: '3.8'
+
+services:
+  # MariaDB Database
+  mysql-mailcow:
+    image: mariadb:10.5
+    container_name: mailcow_mysql
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DBROOT}
+      - MYSQL_DATABASE=mailcow
+      - MYSQL_USER=mailcow
+      - MYSQL_PASSWORD=${DBPASS}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql.cnf:/etc/mysql/conf.d/custom.cnf:ro
+    networks:
+      - mailcow-network
+
+  # Redis for caching
+  redis-mailcow:
+    image: redis:6-alpine
+    container_name: mailcow_redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - mailcow-network
+
+  # Postfix MTA
+  postfix-mailcow:
+    image: mailcow/postfix:latest
+    container_name: mailcow_postfix
+    restart: always
+    environment:
+      - DBROOT=${DBROOT}
+    volumes:
+      - postfix_data:/var/spool/postfix
+      - ./postfix/conf/:/opt/postfix/conf/:ro
+    networks:
+      - mailcow-network
+    ports:
+      - "25:25"    # SMTP
+      - "465:465"  # SMTPS
+      - "587:587"  # Submission
+
+  # Dovecot IMAP/POP3
+  dovecot-mailcow:
+    image: mailcow/dovecot:latest
+    container_name: mailcow_dovecot
+    restart: always
+    environment:
+      - DBROOT=${DBROOT}
+    volumes:
+      - dovecot_data:/var/lib/dovecot
+      - ./dovecot/conf/:/opt/dovecot/conf/:ro
+      - vmail_data:/var/vmail
+    networks:
+      - mailcow-network
+    ports:
+      - "110:110"  # POP3
+      - "143:143"  # IMAP
+      - "993:993"  # IMAPS
+      - "995:995"  # POP3S
+
+  # Nginx for webmail and admin
+  nginx-mailcow:
+    image: nginx:alpine
+    container_name: mailcow_nginx
+    restart: always
+    volumes:
+      - ./nginx/conf/:/etc/nginx/conf.d/:ro
+      - ./webmail/:/var/www/html/:ro
+    networks:
+      - mailcow-network
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - php-fpm-mailcow
+
+  # PHP-FPM for web applications
+  php-fpm-mailcow:
+    image: php:8.1-fpm-alpine
+    container_name: mailcow_php-fpm
+    restart: always
+    volumes:
+      - ./webmail/:/var/www/html/:ro
+    networks:
+      - mailcow-network
+
+  # Roundcube Webmail
+  roundcube-mailcow:
+    image: roundcube/roundcubemail:latest
+    container_name: mailcow_roundcube
+    restart: always
+    environment:
+      - ROUNDCUBEMAIL_DB_TYPE=mysql
+      - ROUNDCUBEMAIL_DB_HOST=mysql-mailcow
+      - ROUNDCUBEMAIL_DB_NAME=mailcow
+      - ROUNDCUBEMAIL_DB_USER=mailcow
+      - ROUNDCUBEMAIL_DB_PASSWORD=${DBPASS}
+    volumes:
+      - roundcube_data:/var/roundcube
+    networks:
+      - mailcow-network
+    depends_on:
+      - mysql-mailcow
+
+  # Admin Panel
+  admin-mailcow:
+    image: mailcow/admin:latest
+    container_name: mailcow_admin
+    restart: always
+    environment:
+      - DB_HOST=mysql-mailcow
+      - DB_NAME=mailcow
+      - DB_USER=mailcow
+      - DB_PASS=${DBPASS}
+    volumes:
+      - admin_data:/var/www/html
+    networks:
+      - mailcow-network
+    depends_on:
+      - mysql-mailcow
+
+  # SpamAssassin
+  spamassassin-mailcow:
+    image: mailcow/spamassassin:latest
+    container_name: mailcow_spamassassin
+    restart: always
+    volumes:
+      - spamassassin_data:/var/lib/spamassassin
+    networks:
+      - mailcow-network
+
+  # ClamAV Antivirus
+  clamav-mailcow:
+    image: mailcow/clamav:latest
+    container_name: mailcow_clamav
+    restart: always
+    volumes:
+      - clamav_data:/var/lib/clamav
+    networks:
+      - mailcow-network
+
+  # Watchdog for monitoring
+  watchdog-mailcow:
+    image: mailcow/watchdog:latest
+    container_name: mailcow_watchdog
+    restart: always
+    environment:
+      - DBROOT=${DBROOT}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - mailcow-network
+
+volumes:
+  mysql_data:
+  redis_data:
+  postfix_data:
+  dovecot_data:
+  vmail_data:
+  roundcube_data:
+  admin_data:
+  spamassassin_data:
+  clamav_data:
+
+networks:
+  mailcow-network:
+    driver: bridge
