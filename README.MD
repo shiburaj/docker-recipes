@@ -6,3 +6,4 @@ Docker Compose Receipe for important apps
 2. **Jenkins** : [https://www.jenkins.io](https://www.jenkins.io/)
 3. **Squid** : [https://www.squid-cache.org](https://www.squid-cache.org/)
 4. **Portainer** : [https://www.portainer.io](https://www.portainer.io/)
+5. **Xibo CMS for Digital Signage** : [https://xibosignage.com/open-source](https://xibosignage.com/open-source/)
